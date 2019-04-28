@@ -38,6 +38,7 @@ public:
             fShaderFile.close();
             // convert stream into string
             vertexCode   = vShaderStream.str();
+            std::cout<<"vetexCode: "<<vertexCode<<std::endl;
             fragmentCode = fShaderStream.str();
         }
         catch (std::ifstream::failure e)
@@ -91,6 +92,12 @@ public:
     void setFloat(const std::string &name, float value) const
     { 
         glUniform1f(glGetUniformLocation(ID, name.c_str()), value); 
+    }
+    void setMatrix4fv(const std::string &name, const float *value)
+    {
+        int m_location = glGetUniformLocation(ID, name.c_str());
+        std::cout<<"m_location "<<m_location<<std::endl;
+        glUniformMatrix4fv(m_location,1, GL_FALSE,value);
     }
 
 private:

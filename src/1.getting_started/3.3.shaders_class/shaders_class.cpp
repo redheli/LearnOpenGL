@@ -4,6 +4,10 @@
 #include <learnopengl/shader_s.h>
 
 #include <iostream>
+#include <glm/glm.hpp>
+#include "glm/gtc/matrix_transform.hpp"
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -78,7 +82,12 @@ int main()
     // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
     // glBindVertexArray(0);
 
+    float angle_in_radians = 180.0/57.3;
+    glm::mat4 rotateMatrix = glm::rotate(glm::mat4(1.0f), angle_in_radians, glm::vec3(0, 0, 1));
+    std::cout<<"rotateMatrix "<<glm::to_string(rotateMatrix)<<std::endl;
+//    glUniformMatrix4fv(2, 1, GL_FALSE, glm::value_ptr(MVP));
 
+ourShader.setMatrix4fv("matrix", /*glm::value_ptr(rotateMatrix)*/&rotateMatrix[0][0]);
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -94,6 +103,7 @@ int main()
 
         // render the triangle
         ourShader.use();
+ourShader.setMatrix4fv("matrix", /*glm::value_ptr(rotateMatrix)*/&rotateMatrix[0][0]);
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
