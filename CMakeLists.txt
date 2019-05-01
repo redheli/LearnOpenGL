@@ -83,6 +83,7 @@ set(1.getting_started
     5.1.transformations
     5.2.transformations_exercise2
     6.1.coordinate_systems
+    6.1.1coordinate_systems_no_depth
     6.2.coordinate_systems_depth
     6.3.coordinate_systems_multiple
     7.1.camera_circle
