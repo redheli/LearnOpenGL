@@ -2,34 +2,104 @@
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 
+#include <mbgl/util/mat4.hpp>
+#include <mbgl/util/size.hpp>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <learnopengl/filesystem.h>
 #include <learnopengl/shader_m.h>
-#include <learnopengl/camera.h>
 
 #include <iostream>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow *window);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-// camera
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
-float lastX = SCR_WIDTH / 2.0f;
-float lastY = SCR_HEIGHT / 2.0f;
-bool firstMouse = true;
+double fov = 0.6435011087932844;
+double pitch = 0.0;
+mbgl::Size size{SCR_WIDTH,SCR_HEIGHT};
 
-// timing
-float deltaTime = 0.0f;	// time between current frame and last frame
-float lastFrame = 0.0f;
+double getFieldOfView()
+{
+    return fov;
+}
+double getPitch(){
+    return pitch;
+}
+double getCameraToCenterDistance(){
+    return 0.5 * SCR_HEIGHT / std::tan(fov / 2.0);
+}
+double pixel_x(){
+    return size.width/2.0;
+}
+double pixel_y(){
+    return size.height/2.0;
+}
+
+
+// mapbox TransformState::getProjMatrix
+void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ, bool aligned) {
+    if (size.isEmpty()) {
+        return;
+    }
+
+     // Find the distance from the center point [width/2, height/2] to the
+    // center top point [width/2, 0] in Z units, using the law of sines.
+    // 1 Z unit is equivalent to 1 horizontal px at the center of the map
+    // (the distance between[width/2, height/2] and [width/2 + 1, height/2])
+    const double halfFov = getFieldOfView() / 2.0;
+    const double groundAngle = M_PI / 2.0 + getPitch();
+    const double topHalfSurfaceDistance = std::sin(halfFov) * getCameraToCenterDistance() / std::sin(M_PI - groundAngle - halfFov);
+
+
+    // Calculate z distance of the farthest fragment that should be rendered.
+    const double furthestDistance = std::cos(M_PI / 2 - getPitch()) * topHalfSurfaceDistance + getCameraToCenterDistance();
+    // Add a bit extra to avoid precision problems when a fragment's distance is exactly `furthestDistance`
+    const double farZ = furthestDistance * 1.01;
+
+    // projection: just like glm::perspective()?
+    mbgl::matrix::perspective(projMatrix, getFieldOfView(), double(size.width) / size.height, nearZ, farZ);
+
+//    const bool flippedY = viewportMode == ViewportMode::FlippedY;
+//    matrix::scale(projMatrix, projMatrix, 1, flippedY ? 1 : -1, 1);
+
+    // view: camera is right up of the map , so translating the scene in the reverse direction of where camera
+    mbgl::matrix::translate(projMatrix, projMatrix, 0, 0, -getCameraToCenterDistance());
+
+//    // rotate pitch
+//    using NO = NorthOrientation;
+//    switch (getNorthOrientation()) {
+//        case NO::Rightwards: matrix::rotate_y(projMatrix, projMatrix, getPitch()); break;
+//        case NO::Downwards: matrix::rotate_x(projMatrix, projMatrix, -getPitch()); break;
+//        case NO::Leftwards: matrix::rotate_y(projMatrix, projMatrix, -getPitch()); break;
+//        default: matrix::rotate_x(projMatrix, projMatrix, getPitch()); break;
+//    }
+
+//    matrix::rotate_z(projMatrix, projMatrix, getAngle() + getNorthOrientationAngle());
+
+    // origin point is middle
+    const double dx = pixel_x() - size.width / 2.0f, dy = pixel_y() - size.height / 2.0f;
+    mbgl::matrix::translate(projMatrix, projMatrix, dx, dy, 0);
+
+//    if (axonometric) {
+//        // mat[11] controls perspective
+//        projMatrix[11] = 0;
+
+//        // mat[8], mat[9] control x-skew, y-skew
+//        projMatrix[8] = xSkew;
+//        projMatrix[9] = ySkew;
+//    }
+
+//    // why z?  b/c scale value not same at different latitude?
+//    matrix::scale(projMatrix, projMatrix, 1, 1,
+//                  1.0 / Projection::getMetersPerPixelAtLatitude(getLatLng(LatLng::Unwrapped).latitude(), getZoom()));
+}
 
 int main()
 {
@@ -55,11 +125,6 @@ int main()
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
-
-    // tell GLFW to capture our mouse
-//    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -75,7 +140,7 @@ int main()
 
     // build and compile our shader zprogram
     // ------------------------------------
-    Shader ourShader("7.4.camera.vs", "7.4.camera.fs");
+    Shader ourShader("6.3.coordinate_systems.vs", "6.3.coordinate_systems.fs");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -214,12 +279,6 @@ int main()
     // -----------
     while (!glfwWindowShouldClose(window))
     {
-        // per-frame time logic
-        // --------------------
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
         // input
         // -----
         processInput(window);
@@ -227,9 +286,9 @@ int main()
         // render
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // also clear the depth buffer now!
 
-        // bind textures on corresponding texture units
+         // bind textures on corresponding texture units
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture1);
         glActiveTexture(GL_TEXTURE1);
@@ -238,12 +297,13 @@ int main()
         // activate shader
         ourShader.use();
 
-        // pass projection matrix to shader (note that in this case it could change every frame)
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        ourShader.setMat4("projection", projection);
-
-        // camera/view transformation
-        glm::mat4 view = camera.GetViewMatrix();
+        // create transformations
+        glm::mat4 view;
+        glm::mat4 projection;
+        projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        view       = glm::translate(view, glm::vec3(1.0f, 0.0f, -3.0f));
+        // pass transformation matrices to the shader
+        ourShader.setMat4("projection", projection); // note: currently we set the projection matrix each frame, but since the projection matrix rarely changes it's often best practice to set it outside the main loop only once.
         ourShader.setMat4("view", view);
 
         // render boxes
@@ -283,15 +343,6 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -301,32 +352,4 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     // make sure the viewport matches the new window dimensions; note that width and 
     // height will be significantly larger than specified on retina displays.
     glViewport(0, 0, width, height);
-}
-
-
-// glfw: whenever the mouse moves, this callback is called
-// -------------------------------------------------------
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
-{
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
-
-    lastX = xpos;
-    lastY = ypos;
-
-    camera.ProcessMouseMovement(xoffset, yoffset);
-}
-
-// glfw: whenever the mouse scroll wheel scrolls, this callback is called
-// ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-    camera.ProcessMouseScroll(yoffset);
 }

@@ -86,6 +86,7 @@ set(1.getting_started
     6.1.1coordinate_systems_no_depth
     6.2.coordinate_systems_depth
     6.3.coordinate_systems_multiple
+    6.4.coordinate_test_mapbox
     7.1.camera_circle
     7.2.camera_keyboard_dt
     7.3.camera_mouse_zoom
@@ -165,7 +166,9 @@ set(7.in_practice
     # 2.text_rendering
 )
 
-
+# mapbox
+include_directories(/home/max/opensource/mapbox-gl-native/src/)
+include_directories(/home/max/opensource/mapbox-gl-native/include/)
 
 configure_file(configuration/root_directory.h.in configuration/root_directory.h)
 include_directories(${CMAKE_BINARY_DIR}/configuration)
@@ -192,8 +195,17 @@ foreach(CHAPTER ${CHAPTERS})
             "src/${CHAPTER}/${DEMO}/*.gs"
         )
         set(NAME "${CHAPTER}__${DEMO}")
-        add_executable(${NAME} ${SOURCE})
-        target_link_libraries(${NAME} ${LIBS})
+        if(DEMO STREQUAL "6.4.coordinate_test_mapbox")
+            add_executable(${NAME} ${SOURCE}
+                /home/max/opensource/mapbox-gl-native/src/mbgl/util/mat4.hpp
+                /home/max/opensource/mapbox-gl-native/src/mbgl/util/mat4.cpp
+                /home/max/opensource/mapbox-gl-native/include/mbgl/util/size.hpp)
+            target_link_libraries(${NAME} ${LIBS})
+        else()
+            add_executable(${NAME} ${SOURCE})
+            target_link_libraries(${NAME} ${LIBS})
+        endif()
+
         if(WIN32)
             set_target_properties(${NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/${CHAPTER}")
         elseif(UNIX AND NOT APPLE)
