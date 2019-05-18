@@ -4,10 +4,23 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
+#include <array>
+#include <type_traits>
+#include <utility>
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <iostream>
+
+namespace util {
+template<typename To, typename From, std::size_t Size,
+         typename = std::enable_if_t<std::is_convertible<From, To>::value>>
+constexpr std::array<To, Size> convert(const std::array<From, Size>&from) {
+    std::array<To, Size> to {{}};
+    std::copy(std::begin(from), std::end(from), std::begin(to));
+    return to;
+}
+}
 
 class Shader
 {
@@ -135,6 +148,10 @@ public:
     void setMat4(const std::string &name, const glm::mat4 &mat) const
     {
         glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+    }
+    void setMbglMat4(const std::string &name, const std::array<double, 16> &mat) const
+    {
+        glUniformMatrix4fv(glGetUniformLocation(ID, name.c_str()), 1, GL_FALSE, util::convert<float>(mat).data());
     }
 
 private:

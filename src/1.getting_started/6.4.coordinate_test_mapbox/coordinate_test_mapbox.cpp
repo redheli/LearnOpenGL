@@ -21,7 +21,7 @@ void processInput(GLFWwindow *window);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-double fov = 0.6435011087932844;
+double fov = glm::radians(45.0f);//0.6435011087932844;
 double pitch = 0.0;
 mbgl::Size size{SCR_WIDTH,SCR_HEIGHT};
 
@@ -44,7 +44,7 @@ double pixel_y(){
 
 
 // mapbox TransformState::getProjMatrix
-void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ, bool aligned) {
+void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ) {
     if (size.isEmpty()) {
         return;
     }
@@ -61,7 +61,7 @@ void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ, bool aligned) {
     // Calculate z distance of the farthest fragment that should be rendered.
     const double furthestDistance = std::cos(M_PI / 2 - getPitch()) * topHalfSurfaceDistance + getCameraToCenterDistance();
     // Add a bit extra to avoid precision problems when a fragment's distance is exactly `furthestDistance`
-    const double farZ = furthestDistance * 1.01;
+    const double farZ = 100;//furthestDistance * 1.01;
 
     // projection: just like glm::perspective()?
     mbgl::matrix::perspective(projMatrix, getFieldOfView(), double(size.width) / size.height, nearZ, farZ);
@@ -70,7 +70,9 @@ void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ, bool aligned) {
 //    matrix::scale(projMatrix, projMatrix, 1, flippedY ? 1 : -1, 1);
 
     // view: camera is right up of the map , so translating the scene in the reverse direction of where camera
-    mbgl::matrix::translate(projMatrix, projMatrix, 0, 0, -getCameraToCenterDistance());
+    double d = 3;//getCameraToCenterDistance();
+    std::cout<<"getCameraToCenterDistance "<<d<<std::endl;
+    mbgl::matrix::translate(projMatrix, projMatrix, 0, 0, -d);
 
 //    // rotate pitch
 //    using NO = NorthOrientation;
@@ -85,7 +87,7 @@ void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ, bool aligned) {
 
     // origin point is middle
     const double dx = pixel_x() - size.width / 2.0f, dy = pixel_y() - size.height / 2.0f;
-    mbgl::matrix::translate(projMatrix, projMatrix, dx, dy, 0);
+//    mbgl::matrix::translate(projMatrix, projMatrix, dx, dy, 0);
 
 //    if (axonometric) {
 //        // mat[11] controls perspective
@@ -297,14 +299,18 @@ int main()
         // activate shader
         ourShader.use();
 
-        // create transformations
-        glm::mat4 view;
+//        // create transformations
+//        glm::mat4 view;
         glm::mat4 projection;
         projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        view       = glm::translate(view, glm::vec3(1.0f, 0.0f, -3.0f));
-        // pass transformation matrices to the shader
-        ourShader.setMat4("projection", projection); // note: currently we set the projection matrix each frame, but since the projection matrix rarely changes it's often best practice to set it outside the main loop only once.
-        ourShader.setMat4("view", view);
+//        view       = glm::translate(view, glm::vec3(1.0f, 0.0f, -3.0f));
+//        // pass transformation matrices to the shader
+//        ourShader.setMat4("projection", projection); // note: currently we set the projection matrix each frame, but since the projection matrix rarely changes it's often best practice to set it outside the main loop only once.
+//        ourShader.setMat4("view", view);
+
+        mbgl::mat4 projMatrix;
+        getProjMatrix(projMatrix,1);
+        ourShader.setMbglMat4("projMatrix", projMatrix);
 
         // render boxes
         glBindVertexArray(VAO);
