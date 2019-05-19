@@ -13,6 +13,7 @@
 #include <learnopengl/shader_m.h>
 
 #include <iostream>
+#include <vector>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -140,6 +141,24 @@ int main()
     // configure global opengl state
     // -----------------------------
     glEnable(GL_DEPTH_TEST);
+
+    // grid plane
+    std::vector<glm::vec3> grid_vertices;
+    constexpr int maxCount{3};
+    for (int i{-maxCount}; i <= maxCount; ++i) {
+        grid_vertices.push_back({static_cast<float>(i), static_cast<float>(-maxCount), static_cast<float>(0)});
+        grid_vertices.push_back({static_cast<float>(i), static_cast<float>(maxCount), static_cast<float>(0)});
+        grid_vertices.push_back({static_cast<float>(-maxCount), static_cast<float>(i), static_cast<float>(0)});
+        grid_vertices.push_back({static_cast<float>(maxCount), static_cast<float>(i), static_cast<float>(0)});
+    }
+    unsigned int VBO_grid, VAO_grid;
+    glGenVertexArrays(1, &VAO_grid);
+    glGenBuffers(1, &VBO_grid);
+    glBindVertexArray(VAO_grid);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO_grid);
+    glBufferData( GL_ARRAY_BUFFER, grid_vertices.size()*sizeof(glm::vec3), glm::value_ptr(grid_vertices[0]), GL_STATIC_DRAW );
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);	// Vertex attributes stay the same
+    glEnableVertexAttribArray(0);
 
     // build and compile our shader zprogram
     // ------------------------------------
@@ -355,6 +374,10 @@ int main()
             ourShader2.setMbglMat4("projMatrix", projMatrix);
             glDrawArrays(GL_TRIANGLES, 0, 3);	// this call should output a yellow triangle
         }
+
+        glBindVertexArray(VAO_grid);
+        glLineWidth(1.f);
+        glDrawArrays(GL_LINES, 0, grid_vertices.size());
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
