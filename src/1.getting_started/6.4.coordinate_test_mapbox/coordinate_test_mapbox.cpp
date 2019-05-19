@@ -68,11 +68,11 @@ void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ) {
     mbgl::matrix::perspective(projMatrix, getFieldOfView(), double(size.width) / size.height, nearZ, farZ);
 
 //    const bool flippedY = viewportMode == ViewportMode::FlippedY;
-//    matrix::scale(projMatrix, projMatrix, 1, flippedY ? 1 : -1, 1);
+//    mbgl::matrix::scale(projMatrix, projMatrix, 1, flippedY ? 1 : -1, 1);
 
     // view: camera is right up of the map , so translating the scene in the reverse direction of where camera
-    double d = getCameraToCenterDistance() *0.1;
-    std::cout<<"getCameraToCenterDistance "<<d<<std::endl;
+    double d = 25;//getCameraToCenterDistance();
+//    std::cout<<"getCameraToCenterDistance "<<d<<std::endl;
     mbgl::matrix::translate(projMatrix, projMatrix, 0, 0, -d);
 
 //    // rotate pitch
@@ -88,7 +88,7 @@ void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ) {
 
     // origin point is middle
     const double dx = pixel_x() - size.width / 2.0f, dy = pixel_y() - size.height / 2.0f;
-//    mbgl::matrix::translate(projMatrix, projMatrix, dx, dy, 0);
+    mbgl::matrix::translate(projMatrix, projMatrix, dx, dy, 0);
 
 //    if (axonometric) {
 //        // mat[11] controls perspective
@@ -145,6 +145,23 @@ int main()
     // ------------------------------------
     Shader ourShader("6.4.coordinate_systems.vs", "6.4.coordinate_systems.fs");
 
+    float firstTriangle[] = {
+        9.f, 2.f, 0.0f,  // left
+        3.0f, 5.f, 0.0f,  // right
+        0.f, 0.f, 0.0f,  // top
+    };
+
+        unsigned int VBO2, VAO2;
+        glGenVertexArrays(1, &VAO2);
+        glGenBuffers(1, &VBO2);
+        glBindVertexArray(VAO2);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO2);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(firstTriangle), firstTriangle, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);	// Vertex attributes stay the same
+        glEnableVertexAttribArray(0);
+        Shader ourShader2("6.4.coordinate_systems2.vs", "6.4.coordinate_systems2.fs");
+
+
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float vertices[] = {
@@ -192,16 +209,16 @@ int main()
     };
     // world space positions of our cubes
     glm::vec3 cubePositions[] = {
-        glm::vec3( 0.0f,  0.0f,  0.0f)
-//        glm::vec3( 2.0f,  5.0f, -15.0f),
-//        glm::vec3(-1.5f, -2.2f, -2.5f),
-//        glm::vec3(-3.8f, -2.0f, -12.3f),
-//        glm::vec3( 2.4f, -0.4f, -3.5f),
-//        glm::vec3(-1.7f,  3.0f, -7.5f),
-//        glm::vec3( 1.3f, -2.0f, -2.5f),
-//        glm::vec3( 1.5f,  2.0f, -2.5f),
-//        glm::vec3( 1.5f,  0.2f, -1.5f),
-//        glm::vec3(-1.3f,  1.0f, -1.5f)
+        glm::vec3( 0.0f,  0.0f,  0.0f),
+        glm::vec3( 2.0f,  5.0f, -15.0f),
+        glm::vec3(-1.5f, -2.2f, -2.5f),
+        glm::vec3(-3.8f, -2.0f, -12.3f),
+        glm::vec3( 2.4f, -0.4f, -3.5f),
+        glm::vec3(-1.7f,  3.0f, -7.5f),
+        glm::vec3( 1.3f, -2.0f, -2.5f),
+        glm::vec3( 1.5f,  2.0f, -2.5f),
+        glm::vec3( 1.5f,  0.2f, -1.5f),
+        glm::vec3(-1.3f,  1.0f, -1.5f)
     };
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
@@ -315,16 +332,28 @@ int main()
 
         // render boxes
         glBindVertexArray(VAO);
-        for (unsigned int i = 0; i < 10; i++)
+        for (unsigned int i = 0; i < 1; i++)
         {
             // calculate the model matrix for each object and pass it to shader before drawing
             glm::mat4 model;
             model = glm::translate(model, cubePositions[i]);
             float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+//            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             ourShader.setMat4("model", model);
 
             glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+
+        ourShader2.use();
+        glBindVertexArray(VAO2);
+        {
+            glm::mat4 model;
+            model = glm::translate(model, cubePositions[0]);
+            ourShader.setMat4("model", model);
+            ourShader2.setMat4("model", model);
+
+            ourShader2.setMbglMat4("projMatrix", projMatrix);
+            glDrawArrays(GL_TRIANGLES, 0, 3);	// this call should output a yellow triangle
         }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
