@@ -21,12 +21,12 @@ void processInput(GLFWwindow *window);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-double fov = glm::radians(45.0f);//0.6435011087932844;
-double pitch = 0.0;
+//double fov = glm::radians(45.0f);
+double fov = 0.6435011087932844;
+double pitch = glm::radians(45.0f);//0.0;
 mbgl::Size size{SCR_WIDTH,SCR_HEIGHT};
 
-double getFieldOfView()
-{
+double getFieldOfView(){
     return fov;
 }
 double getPitch(){
@@ -60,8 +60,9 @@ void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ) {
 
     // Calculate z distance of the farthest fragment that should be rendered.
     const double furthestDistance = std::cos(M_PI / 2 - getPitch()) * topHalfSurfaceDistance + getCameraToCenterDistance();
+//    std::cout<<"getCameraToCenterDistance "<<getCameraToCenterDistance()<<" furthestDistance "<<furthestDistance<<std::endl;
     // Add a bit extra to avoid precision problems when a fragment's distance is exactly `furthestDistance`
-    const double farZ = 100;//furthestDistance * 1.01;
+    const double farZ = furthestDistance * 1.01;
 
     // projection: just like glm::perspective()?
     mbgl::matrix::perspective(projMatrix, getFieldOfView(), double(size.width) / size.height, nearZ, farZ);
@@ -70,7 +71,7 @@ void getProjMatrix(mbgl::mat4& projMatrix, uint16_t nearZ) {
 //    matrix::scale(projMatrix, projMatrix, 1, flippedY ? 1 : -1, 1);
 
     // view: camera is right up of the map , so translating the scene in the reverse direction of where camera
-    double d = 3;//getCameraToCenterDistance();
+    double d = getCameraToCenterDistance() *0.1;
     std::cout<<"getCameraToCenterDistance "<<d<<std::endl;
     mbgl::matrix::translate(projMatrix, projMatrix, 0, 0, -d);
 
